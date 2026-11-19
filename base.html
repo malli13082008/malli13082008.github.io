@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>{% block title %}ClearCV · Resume intelligence{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="{{ url_for('index') }}"><span class="brand-mark">C</span><span>clearcv<span class="brand-dot">.</span></span></a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="nav-list">
+        <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}"><span class="nav-icon">⌂</span> Overview</a>
+        <a class="nav-link {% if request.endpoint in ['result', 'analyze'] %}active{% endif %}" href="{{ url_for('index') }}#analyzer"><span class="nav-icon">◉</span> Resume analyzer</a>
+        <a class="nav-link {% if request.endpoint == 'history' %}active{% endif %}" href="{{ url_for('history') }}"><span class="nav-icon">▤</span> Analysis history</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="privacy-note"><span class="privacy-icon">◈</span><div><strong>Your data stays yours</strong><small>Uploads are removed after analysis.</small></div></div>
+        <div class="user-chip"><div class="avatar">S</div><div><strong>Student workspace</strong><small>Capstone prototype</small></div><span class="more">···</span></div>
+      </div>
+    </aside>
+    <main class="main-area">
+      <header class="topbar"><div class="breadcrumb">Workspace <span>/</span> {% block crumb %}Overview{% endblock %}</div><div class="top-actions"><span class="status-dot"></span><span>Local prototype</span><span class="top-avatar">S</span></div></header>
+      <div class="page-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="flash-stack">{% for category, message in messages %}<div class="flash {{ category }}">{{ message }}<button onclick="this.parentElement.remove()" aria-label="Dismiss">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
+        {% block content %}{% endblock %}
+      </div>
+      <footer class="footer"><span>ClearCV <span class="footer-dot">·</span> Smart Resume Analyzer</span><span>Built as an explainable student prototype <span class="footer-dot">·</span> {{ current_year }}</span></footer>
+    </main>
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

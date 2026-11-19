@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Overview · ClearCV{% endblock %}
+{% block content %}
+<section class="welcome-row"><div><div class="eyebrow"><span class="eyebrow-line"></span> YOUR CAREER WORKSPACE</div><h1>Make your next move <span>count.</span></h1><p class="page-lede">Get clear, practical feedback on your resume for the role you want.</p></div><a class="history-cta" href="{{ url_for('history') }}">View analysis history <span>↗</span></a></section>
+<section class="stat-grid" aria-label="Workspace summary">
+  <article class="stat-card"><div class="stat-top"><span>Resumes analyzed</span><span class="stat-symbol blue">▤</span></div><div class="stat-value">{{ total }}</div><div class="stat-caption">in this workspace</div><div class="stat-rule blue-rule"></div></article>
+  <article class="stat-card"><div class="stat-top"><span>Average resume score</span><span class="stat-symbol green">↗</span></div><div class="stat-value">{{ average }}<small>/100</small></div><div class="stat-caption">across saved analyses</div><div class="stat-rule green-rule"></div></article>
+  <article class="stat-card feature-stat"><div class="stat-top"><span>Built for clarity</span><span class="stat-symbol violet">✳</span></div><div class="stat-feature-text">Skills that tell a<br>stronger story.</div><div class="stat-caption">Role-focused, explainable feedback</div><div class="stat-rule violet-rule"></div></article>
+</section>
+<section class="analyzer-layout" id="analyzer">
+  <div class="section-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> START AN ANALYSIS</div><h2>Let’s look at your resume</h2></div><span class="step-label"><b>01</b> / 01</span></div>
+  <div class="analysis-panel">
+    <div class="panel-main"><div class="panel-heading"><div class="panel-icon">✳</div><div><h3>Upload your resume</h3><p>We’ll check the structure and compare your skills to a target role.</p></div></div>
+      <form action="{{ url_for('analyze') }}" method="post" enctype="multipart/form-data" id="upload-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="drop-zone" for="resume-file" id="drop-zone"><input type="file" id="resume-file" name="resume" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required><span class="upload-icon">↑</span><strong id="file-label">Drop your resume here, or <span>browse</span></strong><small>PDF or DOCX · Up to 8 MB</small></label>
+        <div class="form-row"><label class="field-label" for="role">Target role <span>Choose the role you’re applying for</span></label><div class="select-wrap"><select id="role" name="role" required>{% for role in roles %}<option>{{ role }}</option>{% endfor %}</select><span>⌄</span></div></div>
+        <button class="primary-button" type="submit"><span>Analyze my resume</span><span class="button-arrow">→</span></button>
+        <p class="form-fineprint"><span>◈</span> Your original file is deleted after analysis. The report is saved on this device.</p>
+      </form>
+    </div>
+    <aside class="panel-aside"><div class="aside-label">WHAT YOU’LL GET</div><div class="benefit"><span class="benefit-check">✓</span><div><strong>A resume score</strong><small>Structure and completeness at a glance</small></div></div><div class="benefit"><span class="benefit-check">✓</span><div><strong>Role match</strong><small>See matched and missing skills</small></div></div><div class="benefit"><span class="benefit-check">✓</span><div><strong>Practical feedback</strong><small>Know what to improve next</small></div></div><div class="aside-callout"><span>✦</span><p>Make every skill count.<br><b>Show evidence, not just keywords.</b></p></div></aside>
+  </div>
+</section>
+<section class="recent-section"><div class="recent-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> PICK UP WHERE YOU LEFT OFF</div><h2>Recent analyses</h2></div><a href="{{ url_for('history') }}">See all <span>→</span></a></div>
+  {% if recent %}<div class="recent-table"><div class="table-header"><span>RESUME</span><span>TARGET ROLE</span><span>RESUME SCORE</span><span>ATS MATCH</span><span></span></div>{% for item in recent %}<a class="table-row" href="{{ url_for('result', analysis_id=item['id']) }}"><span class="file-cell"><span class="file-icon">▧</span><span><strong>{{ item['filename'] }}</strong><small>{{ item['created_at'][:10] }}</small></span></span><span class="role-cell">{{ item['role'] }}</span><span class="score-cell"><span class="mini-bar"><i style="width:{{ item['resume_score'] }}%"></i></span>{{ item['resume_score'] }}</span><span><span class="match-pill">{{ item['ats_score'] }}%</span></span><span class="row-arrow">↗</span></a>{% endfor %}</div>{% else %}<div class="empty-row"><span class="empty-icon">▤</span><div><strong>Your analysis history will show up here</strong><small>Upload a resume to get your first set of insights.</small></div></div>{% endif %}
+</section>
+<section class="disclaimer"><span>ⓘ</span><p><b>A note on scores:</b> This prototype uses transparent, rule-based checks against a sample skill list. It is a learning tool, not a hiring decision or a guarantee of ATS results.</p></section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='app.js') }}"></script>{% endblock %}
