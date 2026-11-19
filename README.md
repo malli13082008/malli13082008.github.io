@@ -1,35 +1,60 @@
-# ClearCV - Smart Resume Analyzer
+# ClearCV — Smart Resume Analyzer
 
-ClearCV is the Flask resume analyzer for this repository. It accepts PDF and DOCX resumes, checks basic structure, compares skills with a selected role, and shows a score and improvement suggestions.
+A local-first Flask capstone prototype that analyzes a resume against a selected job role. It implements the five modules in the supplied SkillOrbit capstone brief: upload and parsing, resume scoring, ATS keyword matching, smart feedback, and a results dashboard.
 
-## Run it locally
+## Run locally
 
-Install Python 3.10 or newer. In PowerShell, open this repository folder and run:
+1. Install Python 3.10 or newer.
+2. Open a terminal in this folder and create a virtual environment:
 
-```powershell
-py -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe app.py
-```
+   ```powershell
+   py -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python -m pip install -r requirements.txt
+   ```
 
-Open <http://127.0.0.1:5000>. Keep the PowerShell window open while using the website. The `START_CLEARCV.bat` launcher sets port 8000 instead and prints the address to open.
+3. Start the application:
 
-## Deploy on Render
+   ```powershell
+   python app.py
+   ```
 
-This application needs a Python web server. GitHub Pages serves static files and cannot run the Flask backend. The included `render.yaml` configures the Flask service for Render. Connect the repository to Render and deploy it as a Blueprint; see [deployment instructions](docs/DEPLOYMENT.md).
+4. Open <http://127.0.0.1:8000> when using `START_CLEARCV.bat` (or `http://127.0.0.1:5000` when running `python app.py` without setting `PORT`).
 
-The public demo uses temporary storage and sample resumes only. Do not upload real resumes to a public demo. The app deletes original files after analysis, but retains extracted resume text and results in SQLite for each browser session until the report is deleted. There are no user accounts.
+The app accepts text-based PDF and DOCX resumes up to 8 MB. It stores the analysis and extracted text in `instance/resume_analyzer.sqlite3`; the uploaded file itself is deleted after parsing. Use **Analysis history** to review or delete saved reports. The database is local and has no authentication, so treat this as a single-user educational prototype.
 
-## Project structure
+## Project map
 
 ```text
-app.py                  Flask routes, PDF/DOCX parsing, scoring, session storage
-templates/              Overview, report, and history pages
-static/                 Responsive CSS and upload behavior
-requirements.txt        Flask, pypdf, Gunicorn
-render.yaml             Render web service configuration
-docs/                   Project and deployment documentation
-deliverables/            Capstone report, presentation, and sample resumes
+app.py                  Flask routes, parsing, scoring, SQLite storage
+templates/              Jinja pages: overview, report, history
+static/                 Responsive CSS and small upload interaction script
+requirements.txt        Runtime dependencies
+docs/                   Project documentation and presentation/report sources
+deliverables/            Final editable PPTX and PDF report
 ```
 
-The score is a transparent prototype heuristic: 55% section completeness and 45% exact skill-term coverage for the selected role. It is not a hiring decision or a prediction of real ATS outcomes.
+## Analysis method
+
+- **Resume score (0–100):** 55% section completeness + 45% target-role skill coverage.
+- **ATS match:** exact term match across a small, editable sample skill list for Data Analyst, Web Developer, AI Engineer, and Cloud Engineer.
+- **Section checks:** contact details, skills, education, experience/projects, and a practical word-count range.
+- **Feedback:** flags missing sections and suggests skills from the role list. Suggestions explicitly ask users to include only skills they can support with evidence.
+
+These are transparent prototype heuristics, not a validated hiring or ATS model. A scanned PDF without an embedded text layer will need OCR before analysis; OCR is outside this capstone scope.
+
+## Sample resumes
+
+`deliverables/Sample_Resumes/` contains fictional example resumes for all four supported roles in both DOCX and text-based PDF formats. Select the matching role in the app to see every sample role skill match. These are for software demonstrations, not real applications.
+
+## Privacy and safety
+
+This is a local prototype without user accounts or authorization. It retains extracted resume text and scores in the local SQLite database until a report is deleted. Do not expose the development server to the public internet or upload sensitive resumes to a shared machine. In a production version, add authentication, CSRF protection, retention controls, encrypted storage, accessibility review, and security testing.
+
+## Deployment notes
+
+The supplied brief suggests Render, Netlify, or Vercel. This project is a Flask server, so Render or another Python application host is the most direct path. Set `SECRET_KEY` to a strong random value and configure persistent storage for SQLite (or move to managed PostgreSQL) before deployment. The deployment URL, repository URL, and demo video are intentionally left for the student to create in their own accounts.
+
+## Capstone mapping
+
+See `docs/PROJECT_DOCUMENTATION.md` for module-by-module coverage and the `deliverables/` folder for the report PDF, editable presentation, and synthetic sample resume.

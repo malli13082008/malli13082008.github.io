@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import json
-import hmac
 import os
 import re
-import secrets
 import sqlite3
 import uuid
 import zipfile
@@ -13,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from xml.etree import ElementTree
 
-from flask import Flask, flash, g, redirect, render_template, request, session, url_for
+from flask import Flask, flash, g, redirect, render_template, request, url_for
 from werkzeug.utils import secure_filename
 
 try:
@@ -29,14 +27,8 @@ ALLOWED_EXTENSIONS = {"pdf", "docx"}
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+app.secret_key = os.environ.get("SECRET_KEY", "local-capstone-demo-change-me")
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
-app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = (
-    os.environ.get("SESSION_COOKIE_SECURE", "").lower() in {"1", "true", "yes"}
-    or bool(os.environ.get("RENDER_EXTERNAL_HOSTNAME"))
-)
 
 ROLE_SKILLS = {
     "Data Analyst": ["sql", "excel", "python", "statistics", "tableau", "power bi", "data visualization", "pandas", "data cleaning", "communication"],
@@ -56,12 +48,8 @@ def get_db() -> sqlite3.Connection:
             id TEXT PRIMARY KEY, filename TEXT NOT NULL, role TEXT NOT NULL,
             created_at TEXT NOT NULL, resume_score INTEGER NOT NULL,
             ats_score INTEGER NOT NULL, metrics_json TEXT NOT NULL,
-            feedback_json TEXT NOT NULL, extracted_text TEXT NOT NULL,
-            owner_id TEXT NOT NULL DEFAULT ''
+            feedback_json TEXT NOT NULL, extracted_text TEXT NOT NULL
         )""")
-        columns = {row[1] for row in g.db.execute("PRAGMA table_info(analyses)")}
-        if "owner_id" not in columns:
-            g.db.execute("ALTER TABLE analyses ADD COLUMN owner_id TEXT NOT NULL DEFAULT ''")
         g.db.commit()
     return g.db
 
@@ -71,16 +59,6 @@ def close_db(_error=None):
     db = g.pop("db", None)
     if db is not None:
         db.close()
-
-
-@app.before_request
-def initialize_workspace_and_check_csrf():
-    session.setdefault("workspace_id", uuid.uuid4().hex)
-    session.setdefault("csrf_token", secrets.token_urlsafe(32))
-    if request.method == "POST":
-        submitted = request.form.get("csrf_token", "")
-        if not hmac.compare_digest(submitted, session["csrf_token"]):
-            return "Invalid form token. Refresh the page and try again.", 400
 
 
 def extract_text(path: Path, suffix: str) -> str:
@@ -145,16 +123,15 @@ def analyze_resume(text: str, role: str) -> dict:
 
 @app.context_processor
 def inject_globals():
-    return {"roles": list(ROLE_SKILLS), "current_year": datetime.now().year, "csrf_token": session["csrf_token"]}
+    return {"roles": list(ROLE_SKILLS), "current_year": datetime.now().year}
 
 
 @app.route("/")
 def index():
     db = get_db()
-    owner_id = session["workspace_id"]
-    recent = db.execute("SELECT id, filename, role, created_at, resume_score, ats_score FROM analyses WHERE owner_id = ? ORDER BY created_at DESC LIMIT 5", (owner_id,)).fetchall()
-    total = db.execute("SELECT COUNT(*) FROM analyses WHERE owner_id = ?", (owner_id,)).fetchone()[0]
-    avg = db.execute("SELECT ROUND(AVG(resume_score)) FROM analyses WHERE owner_id = ?", (owner_id,)).fetchone()[0] or 0
+    recent = db.execute("SELECT id, filename, role, created_at, resume_score, ats_score FROM analyses ORDER BY created_at DESC LIMIT 5").fetchall()
+    total = db.execute("SELECT COUNT(*) FROM analyses").fetchone()[0]
+    avg = db.execute("SELECT ROUND(AVG(resume_score)) FROM analyses").fetchone()[0] or 0
     return render_template("index.html", recent=recent, total=total, average=avg)
 
 
@@ -196,10 +173,10 @@ def analyze():
     analysis_id = uuid.uuid4().hex[:12]
     metrics = {k: v for k, v in result.items() if k != "feedback"}
     db = get_db()
-    db.execute("INSERT INTO analyses (id, filename, role, created_at, resume_score, ats_score, metrics_json, feedback_json, extracted_text, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
+    db.execute("INSERT INTO analyses VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (
         analysis_id, safe_name, role, datetime.now(timezone.utc).isoformat(),
         result["resume_score"], result["ats_score"], json.dumps(metrics),
-        json.dumps(result["feedback"]), text[:100000], session["workspace_id"],
+        json.dumps(result["feedback"]), text[:100000],
     ))
     db.commit()
     stored_path.unlink(missing_ok=True)  # Keep analysis data, discard the original upload.
@@ -208,7 +185,7 @@ def analyze():
 
 @app.route("/analysis/<analysis_id>")
 def result(analysis_id):
-    row = get_db().execute("SELECT * FROM analyses WHERE id = ? AND owner_id = ?", (analysis_id, session["workspace_id"])).fetchone()
+    row = get_db().execute("SELECT * FROM analyses WHERE id = ?", (analysis_id,)).fetchone()
     if not row:
         flash("That analysis could not be found.", "error")
         return redirect(url_for("index"))
@@ -217,13 +194,13 @@ def result(analysis_id):
 
 @app.route("/history")
 def history():
-    rows = get_db().execute("SELECT id, filename, role, created_at, resume_score, ats_score FROM analyses WHERE owner_id = ? ORDER BY created_at DESC", (session["workspace_id"],)).fetchall()
+    rows = get_db().execute("SELECT id, filename, role, created_at, resume_score, ats_score FROM analyses ORDER BY created_at DESC").fetchall()
     return render_template("history.html", rows=rows)
 
 
 @app.post("/analysis/<analysis_id>/delete")
 def delete_analysis(analysis_id):
-    get_db().execute("DELETE FROM analyses WHERE id = ? AND owner_id = ?", (analysis_id, session["workspace_id"]))
+    get_db().execute("DELETE FROM analyses WHERE id = ?", (analysis_id,))
     get_db().commit()
     flash("Analysis deleted.", "success")
     return redirect(url_for("history"))
